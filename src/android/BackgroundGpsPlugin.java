@@ -39,15 +39,9 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
     private String notificationText = "ENABLED";
     private String stopOnTerminate = "false";
 
-    private static Activity activity;
-
-    public static Activity getCordovaActivity() {
-        return activity;
-    }
-
     public boolean execute(String action, JSONArray data, CallbackContext callbackContext) {
 
-        activity = this.cordova.getActivity();
+        Activity activity = this.cordova.getActivity();
 
         Boolean result = false;
         updateServiceIntent = new Intent(activity, LocationUpdateService.class);
