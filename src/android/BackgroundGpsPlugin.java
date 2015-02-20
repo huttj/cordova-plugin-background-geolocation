@@ -28,6 +28,10 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
     private String headers;
     private String stationaryRadius = "30";
     private String desiredAccuracy = "100";
+
+    private String interval = "300000";
+    private String fastestInterval = "60000";
+
     private String distanceFilter = "30";
     private String locationTimeout = "60";
     private String isDebugging = "false";
@@ -35,8 +39,16 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
     private String notificationText = "ENABLED";
     private String stopOnTerminate = "false";
 
+    private static Activity activity;
+
+    public static Activity getCordovaActivity() {
+        return activity;
+    }
+
     public boolean execute(String action, JSONArray data, CallbackContext callbackContext) {
-        Activity activity = this.cordova.getActivity();
+
+        activity = this.cordova.getActivity();
+
         Boolean result = false;
         updateServiceIntent = new Intent(activity, LocationUpdateService.class);
 
@@ -58,6 +70,8 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
                 updateServiceIntent.putExtra("notificationTitle", notificationTitle);
                 updateServiceIntent.putExtra("notificationText", notificationText);
                 updateServiceIntent.putExtra("stopOnTerminate", stopOnTerminate);
+                updateServiceIntent.putExtra("interval", interval);
+                updateServiceIntent.putExtra("fastestInterval", fastestInterval);
 
                 activity.startService(updateServiceIntent);
                 isEnabled = true;
@@ -71,8 +85,8 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
             result = true;
             try {
                 // Params.
-                //    0       1       2           3               4                5               6            7           8                9               10              11
-                //[params, headers, url, stationaryRadius, distanceFilter, locationTimeout, desiredAccuracy, debug, notificationTitle, notificationText, activityType, stopOnTerminate]
+                //    0       1       2           3               4                5               6            7           8                9               10              11            12           13
+                //[params, headers, url, stationaryRadius, distanceFilter, locationTimeout, desiredAccuracy, debug, notificationTitle, notificationText, activityType, stopOnTerminate, interval, fastestInterval]
                 this.params = data.getString(0);
                 this.headers = data.getString(1);
                 this.url = data.getString(2);
@@ -84,6 +98,8 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
                 this.notificationTitle = data.getString(8);
                 this.notificationText = data.getString(9);
                 this.stopOnTerminate = data.getString(11);
+                this.interval = data.getString(12);
+                this.fastestInterval = data.getString(13);
             } catch (JSONException e) {
                 callbackContext.error("authToken/url required as parameters: " + e.getMessage());
             }

@@ -2,6 +2,7 @@ package com.tenforwardconsulting.cordova.bgloc;
 
 import java.util.List;
 import java.util.Iterator;
+import java.util.Random;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -28,6 +29,7 @@ import android.app.NotificationManager;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.Activity;
 
 import android.content.Context;
 import android.content.Intent;
@@ -76,15 +78,17 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
     private PendingIntent locationUpdatePI;
     private GoogleApiClient locationClientAPI;
 
-    private float   stationaryRadius;
     private Integer desiredAccuracy = 100;
     private Integer distanceFilter  = 30;
     private Integer locationTimeout = 30;
     private Integer scaledDistanceFilter;
 
-    private long  interval             = 60 * 5 * 1000L;
-    private long  fastestInterval      = 30 * 1000L;
-    private float smallestDisplacement = 0F;
+    private static final Integer SECONDS_PER_MINUTE      = 60;
+    private static final Integer MILLISECONDS_PER_SECOND = 60;
+
+    private long  interval             = (long)  SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND * 5;
+    private long  fastestInterval      = (long)  SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
+    private float stationaryRadius     = (float) 0;
 
     private Boolean isDebugging;
     private String notificationTitle = "Background checking";
@@ -151,6 +155,10 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
             scaledDistanceFilter = distanceFilter;
             desiredAccuracy = Integer.parseInt(intent.getStringExtra("desiredAccuracy"));
             locationTimeout = Integer.parseInt(intent.getStringExtra("locationTimeout"));
+
+            interval             = Integer.parseInt(intent.getStringExtra("interval"));
+            fastestInterval      = Integer.parseInt(intent.getStringExtra("fastestInterval"));
+
             isDebugging = Boolean.parseBoolean(intent.getStringExtra("isDebugging"));
             notificationTitle = intent.getStringExtra("notificationTitle");
             notificationText = intent.getStringExtra("notificationText");
@@ -164,9 +172,12 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
             builder.setContentTitle(notificationTitle);
             builder.setContentText(notificationText);
             builder.setSmallIcon(android.R.drawable.ic_menu_mylocation);
-            builder.setContentIntent(pendingIntent);
-            Notification notification;
 
+            // Make clicking the event link back to the main cordova activity
+            //builder.setContentIntent(pendingIntent);
+            setClickEvent(builder);
+
+            Notification notification;
             if (android.os.Build.VERSION.SDK_INT >= 16) {
                 notification = buildForegroundNotification(builder);
             } else {
@@ -181,21 +192,37 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
         Log.i(TAG, "- headers: " + headers.toString());
         Log.i(TAG, "- interval: "             + interval);
         Log.i(TAG, "- fastestInterval: "      + fastestInterval);
-        Log.i(TAG, "- smallestDisplacement: " + smallestDisplacement);
 
-//        Log.i(TAG, "- stationaryRadius: "   + stationaryRadius);
+        Log.i(TAG, "- stationaryRadius: "   + stationaryRadius);
 //        Log.i(TAG, "- distanceFilter: "     + distanceFilter);
-//        Log.i(TAG, "- desiredAccuracy: "    + desiredAccuracy);
+        Log.i(TAG, "- desiredAccuracy: "    + desiredAccuracy);
 //        Log.i(TAG, "- locationTimeout: "    + locationTimeout);
         Log.i(TAG, "- isDebugging: "        + isDebugging);
         Log.i(TAG, "- notificationTitle: "  + notificationTitle);
         Log.i(TAG, "- notificationText: "   + notificationText);
 
         // Todo: Probably not necessary
-        this.stopRecording();
+        // this.stopRecording();
 
         //We want this service to continue running until it is explicitly stopped
         return START_REDELIVER_INTENT;
+    }
+
+    /**
+     * Adds an onclick handler to the notification
+     */
+    private Notification.Builder setClickEvent (Notification.Builder notification) {
+        Context context     = getApplicationContext();
+        String packageName  = context.getPackageName();
+        Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        int requestCode = new Random().nextInt();
+
+        PendingIntent contentIntent = PendingIntent.getActivity(context, requestCode, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        return notification.setContentIntent(contentIntent);
     }
 
     /**
@@ -274,10 +301,10 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
             connectToPlayAPI();
         } else if (locationClientAPI.isConnected()) {
             LocationRequest locationRequest = LocationRequest.create()
-                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY) // this.accuracy
+                    .setPriority(translateDesiredAccuracy(desiredAccuracy)) // this.accuracy
                     .setFastestInterval(fastestInterval)
                     .setInterval(interval)
-                    .setSmallestDisplacement(smallestDisplacement);
+                    .setSmallestDisplacement(stationaryRadius);
             LocationServices.FusedLocationApi.requestLocationUpdates(locationClientAPI, locationRequest, locationUpdatePI);
             this.running = true;
             Log.d(TAG, "- locationUpdateReceiver NOW RECORDING!!!!!!!!!!");
@@ -331,20 +358,23 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
     */
     private Integer translateDesiredAccuracy(Integer accuracy) {
         switch (accuracy) {
+            case 10000:
+                accuracy = LocationRequest.PRIORITY_NO_POWER;
+                break;
             case 1000:
-                accuracy = Criteria.ACCURACY_LOW;
+                accuracy = LocationRequest.PRIORITY_LOW_POWER;
                 break;
             case 100:
-                accuracy = Criteria.ACCURACY_MEDIUM;
+                accuracy = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY;
                 break;
             case 10:
-                accuracy = Criteria.ACCURACY_HIGH;
+                accuracy = LocationRequest.PRIORITY_HIGH_ACCURACY;
                 break;
             case 0:
-                accuracy = Criteria.ACCURACY_HIGH;
+                accuracy = LocationRequest.PRIORITY_HIGH_ACCURACY;
                 break;
             default:
-                accuracy = Criteria.ACCURACY_MEDIUM;
+                accuracy = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY;
         }
         return accuracy;
     }
