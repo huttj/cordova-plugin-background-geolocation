@@ -76,11 +76,16 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
     private PendingIntent locationUpdatePI;
     private GoogleApiClient locationClientAPI;
 
-    private float stationaryRadius;
+    private float   stationaryRadius;
     private Integer desiredAccuracy = 100;
-    private Integer distanceFilter = 30;
-    private Integer scaledDistanceFilter;
+    private Integer distanceFilter  = 30;
     private Integer locationTimeout = 30;
+    private Integer scaledDistanceFilter;
+
+    private long  interval             = 60 * 5 * 1000L;
+    private long  fastestInterval      = 30 * 1000L;
+    private float smallestDisplacement = 0F;
+
     private Boolean isDebugging;
     private String notificationTitle = "Background checking";
     private String notificationText = "ENABLED";
@@ -172,16 +177,21 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
             startForeground(startId, notification);
         }
         Log.i(TAG, "- url: " + url);
-        Log.i(TAG, "- params: " + params.toString());
+        Log.i(TAG, "- params: "  + params.toString());
         Log.i(TAG, "- headers: " + headers.toString());
-        Log.i(TAG, "- stationaryRadius: "   + stationaryRadius);
-        Log.i(TAG, "- distanceFilter: "     + distanceFilter);
-        Log.i(TAG, "- desiredAccuracy: "    + desiredAccuracy);
-        Log.i(TAG, "- locationTimeout: "    + locationTimeout);
+        Log.i(TAG, "- interval: "             + interval);
+        Log.i(TAG, "- fastestInterval: "      + fastestInterval);
+        Log.i(TAG, "- smallestDisplacement: " + smallestDisplacement);
+
+//        Log.i(TAG, "- stationaryRadius: "   + stationaryRadius);
+//        Log.i(TAG, "- distanceFilter: "     + distanceFilter);
+//        Log.i(TAG, "- desiredAccuracy: "    + desiredAccuracy);
+//        Log.i(TAG, "- locationTimeout: "    + locationTimeout);
         Log.i(TAG, "- isDebugging: "        + isDebugging);
         Log.i(TAG, "- notificationTitle: "  + notificationTitle);
         Log.i(TAG, "- notificationText: "   + notificationText);
 
+        // Todo: Probably not necessary
         this.stopRecording();
 
         //We want this service to continue running until it is explicitly stopped
@@ -260,12 +270,14 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
     }
 
     private void attachRecorder() {
-        if (locationClientAPI.isConnected()) {
+        if (locationClientAPI == null) {
+            connectToPlayAPI();
+        } else if (locationClientAPI.isConnected()) {
             LocationRequest locationRequest = LocationRequest.create()
                     .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY) // this.accuracy
-                    .setFastestInterval(1000L)
-                    .setInterval(5000L)
-                    .setSmallestDisplacement(0F);
+                    .setFastestInterval(fastestInterval)
+                    .setInterval(interval)
+                    .setSmallestDisplacement(smallestDisplacement);
             LocationServices.FusedLocationApi.requestLocationUpdates(locationClientAPI, locationRequest, locationUpdatePI);
             this.running = true;
             Log.d(TAG, "- locationUpdateReceiver NOW RECORDING!!!!!!!!!!");
@@ -275,7 +287,9 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
     }
 
     private void detachRecorder() {
-        if (locationClientAPI.isConnected()) {
+        if (locationClientAPI == null) {
+            connectToPlayAPI();
+        } else if (locationClientAPI.isConnected()) {
             LocationServices.FusedLocationApi.removeLocationUpdates(locationClientAPI, locationUpdatePI);
             this.running = false;
             Log.d(TAG, "- locationUpdateReceiver NO LONGER RECORDING!!!!!!!!!!");
