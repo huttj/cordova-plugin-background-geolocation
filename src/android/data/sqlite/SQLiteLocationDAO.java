@@ -63,15 +63,25 @@ public class SQLiteLocationDAO implements LocationDAO {
 		}
 		
 	}
-	
-	public void deleteLocation(Location location) {
-		SQLiteDatabase db = new LocationOpenHelper(context).getWritableDatabase();
-		db.beginTransaction();
-		db.delete(LocationOpenHelper.LOCATION_TABLE_NAME, "id = ?", new String[]{location.getId().toString()});
-		db.setTransactionSuccessful();
-		db.endTransaction();
-		db.close();
-	}
+
+    public void deleteLocation(Location location) {
+        SQLiteDatabase db = new LocationOpenHelper(context).getWritableDatabase();
+        db.beginTransaction();
+        db.delete(LocationOpenHelper.LOCATION_TABLE_NAME, "id = ?", new String[]{location.getId().toString()});
+        db.setTransactionSuccessful();
+        db.endTransaction();
+        db.close();
+    }
+
+    public void deleteAllLocations() {
+        Log.d("LocationUpdateService", "DELETE ALL LOCATIONS");
+        SQLiteDatabase db = new LocationOpenHelper(context).getWritableDatabase();
+        db.beginTransaction();
+        db.delete(LocationOpenHelper.LOCATION_TABLE_NAME, null, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+        db.close();
+    }
 	
 	private Location hydrate(Cursor c) {
 		Location l = new Location();

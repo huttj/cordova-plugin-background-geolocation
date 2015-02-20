@@ -96,6 +96,27 @@ public class BackgroundGpsPlugin extends CordovaPlugin {
         return result;
     }
 
+    private static final String STOP_RECORDING  = "com.tenforwardconsulting.cordova.bgloc.STOP_RECORDING";
+    private static final String START_RECORDING = "com.tenforwardconsulting.cordova.bgloc.START_RECORDING";
+
+    @Override
+    public void onPause(boolean multitasking) {
+        Log.d(TAG, "- locationUpdateReceiver Paused (starting recording = " + String.valueOf(isEnabled) + ")!!!!!!!!!!");
+        if (isEnabled) {
+            Activity activity = this.cordova.getActivity();
+            activity.sendBroadcast(new Intent(START_RECORDING));
+        }
+    }
+
+    @Override
+    public void onResume(boolean multitasking) {
+        Log.d(TAG, "- locationUpdateReceiver Resumed (stopping recording)!!!!!!!!!!");
+        //if (isEnabled) {
+            Activity activity = this.cordova.getActivity();
+            activity.sendBroadcast(new Intent(STOP_RECORDING));
+        //}
+    }
+
     /**
      * Override method in CordovaPlugin.
      * Checks to see if it should turn off
